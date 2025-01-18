@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Chat Example</title>
+    <script type="text/javascript">
+      window.onload = function () {
+        var conn;
+        var log = document.getElementById("log");
+
+        function appendLog(item) {
+          var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+          log.appendChild(item);
+          if (doScroll) {
+            log.scrollTop = log.scrollHeight - log.clientHeight;
+          }
+        }
+
+        document.getElementById("form").onsubmit = function (e) {
+          const action = Number.parseInt(e.submitter.value);
+          if (!conn) {
+            return false;
+          }
+          if (typeof action === "undefined") {
+            return false;
+          }
+          conn.send(JSON.stringify({
+            playerId: 0,
+            timestamp: new Date().getTime(),
+            payload: {
+              action,
+            }
+          }));
+          return false;
+        };
+
+        if (window["WebSocket"]) {
+          conn = new WebSocket("ws://" + document.location.host + "/ws");
+          conn.onclose = function (evt) {
+            var item = document.createElement("div");
+            item.innerHTML = "<b>Connection closed.</b>";
+            appendLog(item);
+          };
+          conn.onmessage = function (evt) {
+            var reader = new FileReader();
+            reader.onload = function() {
+              var messages = JSON.parse(reader.result);
+              console.log(messages);
+              var item = document.createElement("div");
+              item.innerText = JSON.stringify(messages);
+              appendLog(item);
+            };
+            reader.readAsText(evt.data);
+          };
+        } else {
+          var item = document.createElement("div");
+          item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+          appendLog(item);
+        }
+      };
+    </script>
+    <style type="text/css">
+      html {
+        overflow: hidden;
+      }
+
+      body {
+        overflow: hidden;
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: gray;
+      }
+
+      #log {
+        background: white;
+        margin: 0;
+        padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        right: 0.5rem;
+        bottom: 3rem;
+        overflow: auto;
+      }
+
+      #form {
+        padding: 0 0.5rem 0 0.5rem;
+        margin: 0;
+        position: absolute;
+        bottom: 1em;
+        left: 0px;
+        width: 100%;
+        overflow: hidden;
+
+        button {
+          height: 4rem;
+          width: 8rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="log"></div>
+    <form id="form">
+      <button type="submit" id="action" value="0">Join</button>
+      <button type="submit" id="action" value="1">Leave</button>
+      <button type="submit" id="action" value="2">Start</button>
+      <button type="submit" id="action" value="3">End</button>
+    </form>
+  </body>
+</html>
