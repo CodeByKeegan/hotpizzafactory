@@ -73,16 +73,7 @@ func NextAction(game *Game, message Message) ClientState {
 		// if msgPlayer is the host, assign new host and remove
 		// if msgPlayer is the participant, remove from the game
 		if ok {
-			if msgPlayer.role == Host {
-				// assign new host
-				for _, player := range game.players {
-					if player.role == Participant {
-						player.role = Host
-						break
-					}
-				}
-			}
-			delete(game.players, message.PlayerId)
+			RemovePlayer(game, message.PlayerId)
 		}
 
 		fmt.Println("Leave", message.PlayerId, len(game.players))
@@ -158,4 +149,44 @@ func NextAction(game *Game, message Message) ClientState {
 	return NewClientStatus(game)
 }
 
+func RemovePlayer(game *Game, playerId string) {
+	// if player is the host, assign new host
+	// if player is the active player, change active player to next player
+	// remove player from the player order
+	// remove player from the game
+
+	player := game.players[playerId];
+	if player.role == Host {
+		for _, newHost := range game.players {
+			if newHost.role == Participant {
+				newHost.role = Host
+				game.players[newHost.id] = newHost
+				break
+			}	
+		}
+	}
+
+	if game.activePlayer.id == playerId {
+		activePlayerIndex := 0
+		for i, playerId := range game.playerOrder {
+			if playerId == game.activePlayer.id {
+				activePlayerIndex = i
+				break
+			}
+		}
+
+		activePlayerIndex = (activePlayerIndex + 1) % len(game.playerOrder)
+		game.activePlayer = game.players[game.playerOrder[activePlayerIndex]]
+	}
+
+	playerOrder := make([]string, 0, len(game.playerOrder)-1)
+	for _, playerId := range game.playerOrder {
+		if playerId != player.id {
+			playerOrder = append(playerOrder, playerId)
+		}
+	}
+	game.playerOrder = playerOrder
+
+	delete(game.players, playerId)
+}
 
