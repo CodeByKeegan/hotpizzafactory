@@ -15,6 +15,15 @@
           }
         }
 
+        function getPlayerId() {
+          let playerId = sessionStorage.getItem("player_id");
+          if (playerId === null) {
+            playerId = crypto.randomUUID();
+            sessionStorage.setItem("player_id", playerId);
+          }
+          return playerId;
+        }
+
         document.getElementById("form").onsubmit = function (e) {
           const action = Number.parseInt(e.submitter.value);
           if (!conn) {
@@ -23,18 +32,25 @@
           if (typeof action === "undefined") {
             return false;
           }
+
+          const playerId = getPlayerId();
+
           conn.send(JSON.stringify({
-            playerId: 0,
+            playerId,
             timestamp: new Date().getTime(),
             payload: {
               action,
             }
           }));
+
           return false;
         };
 
         if (window["WebSocket"]) {
-          conn = new WebSocket("ws://" + document.location.host + "/ws");
+          const search = new URLSearchParams({
+            player_id: getPlayerId(),
+          });
+          conn = new WebSocket(`ws://${document.location.host}/ws?${search}`);
           conn.onclose = function (evt) {
             var item = document.createElement("div");
             item.innerHTML = "<b>Connection closed.</b>";
@@ -104,8 +120,6 @@
   <body>
     <div id="log"></div>
     <form id="form">
-      <button type="submit" id="action" value="0">Join</button>
-      <button type="submit" id="action" value="1">Leave</button>
       <button type="submit" id="action" value="2">Start</button>
       <button type="submit" id="action" value="3">End</button>
     </form>

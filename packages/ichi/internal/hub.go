@@ -33,13 +33,24 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.register:
+			println("Register")
 			h.clients[client] = true
+			message := JsonFromMessage(Message{PlayerId: client.playerId, Payload: Payload{Action: Join}})
+			go func() {
+				h.broadcast <- message
+			}()
 		case client := <-h.unregister:
+			println("Unregister")
+			message := JsonFromMessage(Message{PlayerId: client.playerId, Payload: Payload{Action: Leave}})
+			go func() {
+				h.broadcast <- message
+			}()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
 			}
 		case message := <-h.broadcast:
+			println("Broadcast")
 			msg := MessageFromJson(message)
 			nextMsg := JsonFromMessage(NextAction(h.game, msg))
 			for client := range h.clients {

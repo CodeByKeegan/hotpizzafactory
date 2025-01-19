@@ -1,7 +1,7 @@
 package api
 
 type Message struct {
-	PlayerId int
+	PlayerId string
 
 	Timestamp int
 
@@ -29,7 +29,7 @@ const (
 )
 
 type Player struct {
-	id int
+	id string
 
 	name string
 
@@ -37,7 +37,7 @@ type Player struct {
 }
 
 type Game struct {
-	players []Player
+	players map[string]Player
 
 	activePlayer Player
 
