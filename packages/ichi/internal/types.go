@@ -19,6 +19,7 @@ const (
 	Leave
 	Start
 	End
+	Play
 )
 
 type PlayerRole int
@@ -26,6 +27,7 @@ type PlayerRole int
 const (
 	Host PlayerRole = iota
 	Participant
+	Audience
 )
 
 type Player struct {
@@ -34,6 +36,8 @@ type Player struct {
 	name string
 
 	role PlayerRole
+
+	hand int
 }
 
 type Game struct {
@@ -51,3 +55,13 @@ const (
 	Playing
 	Ended
 )
+
+type GameStatus struct {
+	PlayerHands map[int]string
+
+	Host string
+
+	ActivePlayerId string 
+
+	State GameState
+}
