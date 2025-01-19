@@ -52,7 +52,7 @@ func (h *Hub) Run() {
 		case message := <-h.broadcast:
 			println("Broadcast")
 			msg := MessageFromJson(message)
-			nextMsg := JsonFromGameStatus(NextAction(h.game, msg))
+			nextMsg := JsonFromClientState(NextAction(h.game, msg))
 			for client := range h.clients {
 				select {
 				case client.send <- nextMsg:

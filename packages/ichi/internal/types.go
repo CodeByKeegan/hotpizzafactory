@@ -43,6 +43,8 @@ type Player struct {
 type Game struct {
 	players map[string]Player
 
+	playerOrder []string
+
 	activePlayer Player
 
 	state GameState
@@ -56,8 +58,10 @@ const (
 	Ended
 )
 
-type GameStatus struct {
-	PlayerHands map[int]string
+type ClientState struct {
+	PlayerHands map[string]int
+
+	PlayerOrder []string
 
 	Host string
 

@@ -1,6 +1,12 @@
 package api
 
-import "fmt"
+import (
+	"fmt"
+)
+
+const (
+	MinPlayerCount = 2
+)
 
 func NewGame() *Game {
 	return &Game{
@@ -9,11 +15,11 @@ func NewGame() *Game {
 	}
 }
 
-func NewGameStatus(game *Game) GameStatus{
+func NewClientStatus(game *Game) ClientState{
 	// player hands
-	playerHands := make(map[int]string)
+	playerHands := make(map[string]int)
 	for _, player := range game.players {
-		playerHands[player.hand] = player.id
+		playerHands[player.id] = player.hand
 	}
 
 	// player host
@@ -25,15 +31,16 @@ func NewGameStatus(game *Game) GameStatus{
 		}
 	}
 
-	return GameStatus{
+	return ClientState{
 		PlayerHands: playerHands,
+		PlayerOrder: game.playerOrder,
 		Host:  playerHost,
 		ActivePlayerId: game.activePlayer.id,
 		State:	game.state,
 	}
 }
 
-func NextAction(game *Game, message Message) GameStatus {
+func NextAction(game *Game, message Message) ClientState {
 	msgPlayer, ok := game.players[message.PlayerId]
 
 	action := message.Payload.Action
@@ -82,23 +89,73 @@ func NextAction(game *Game, message Message) GameStatus {
 	case Start:
 		// if msgPlayer is not the host, do nothing
 		// if msgPlayer is the host, change game state to Playing
-		if msgPlayer.role == Host {
+		if (msgPlayer.role == Host && 
+			game.state == Waiting && 
+			len(game.players) >= MinPlayerCount) {
+
 			game.state = Playing
+
+			// set player order
+			game.playerOrder = make([]string, 0, len(game.players))
+			for playerId := range game.players {
+				game.playerOrder = append(game.playerOrder, playerId)
+			}
+
+			// set active player
+			game.activePlayer = game.players[game.playerOrder[0]]
+
+			// set player hands
+			for _, playerId := range game.playerOrder {
+				player := game.players[playerId]
+				player.hand = 7
+				game.players[playerId] = player
+			}
 		}
 		fmt.Println("Start", message.PlayerId)
 	case End:
 		// if msgPlayer is not the host, do nothing
 		// if msgPlayer is the host, change game state to Ended
-		if msgPlayer.role == Host {
+		if msgPlayer.role == Host && 
+		game.state == Playing {
+
 			game.state = Ended
 		}
 		fmt.Println("End", message.PlayerId)
+
+	case Play:
+		// if msgPlayer is not the active player, do nothing
+		// if msgPlayer is the active player, decrement the hand count and change active player
+		if msgPlayer.id == game.activePlayer.id {
+
+			// decrement hand count
+			msgPlayer.hand--
+			game.players[msgPlayer.id] = msgPlayer
+
+			// if hand count is 0, end the game
+			if msgPlayer.hand == 0 {
+				game.state = Ended
+				break;
+			}
+			
+			// change active player
+			activePlayerIndex := 0
+			for i, playerId := range game.playerOrder {
+				if playerId == game.activePlayer.id {
+					activePlayerIndex = i
+					break
+				}
+			}
+			
+			activePlayerIndex = (activePlayerIndex + 1) % len(game.playerOrder)
+			game.activePlayer = game.players[game.playerOrder[activePlayerIndex]]
+		}
+		fmt.Println("Play", message.PlayerId, msgPlayer.hand, game.activePlayer.id)
 
 	default:
 		panic(fmt.Errorf("unknown state: %d", action))
 	}
 
-	return NewGameStatus(game)
+	return NewClientStatus(game)
 }
 
 

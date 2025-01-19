@@ -22,8 +22,8 @@ func JsonFromMessage(m Message) []byte {
 	return b
 }
 
-// JsonFromGameStatus encodes a GameStatus to a JSON byte array
-func JsonFromGameStatus(gs GameStatus) []byte {
+// JsonFromClientState encodes a ClientState to a JSON byte array
+func JsonFromClientState(gs ClientState) []byte {
 	b, err := json.Marshal(gs)
 	if err != nil {
 		panic(err)
