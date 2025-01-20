@@ -35,13 +35,13 @@ func (h *Hub) Run() {
 		case client := <-h.register:
 			println("Register")
 			h.clients[client] = true
-			message := JsonFromMessage(Message{PlayerId: client.playerId, Payload: Payload{Action: Join}})
+			message := JsonFromMessage(Message{PlayerId: client.playerId, Event: Event{Action: Join}})
 			go func() {
 				h.broadcast <- message
 			}()
 		case client := <-h.unregister:
 			println("Unregister")
-			message := JsonFromMessage(Message{PlayerId: client.playerId, Payload: Payload{Action: Leave}})
+			message := JsonFromMessage(Message{PlayerId: client.playerId, Event: Event{Action: Leave}})
 			go func() {
 				h.broadcast <- message
 			}()
@@ -52,8 +52,9 @@ func (h *Hub) Run() {
 		case message := <-h.broadcast:
 			println("Broadcast")
 			msg := MessageFromJson(message)
-			nextMsg := JsonFromClientState(NextAction(h.game, msg))
+			NextAction(h.game, msg)
 			for client := range h.clients {
+				nextMsg := JsonFromClientState(NewClientStatus(h.game, client.playerId))
 				select {
 				case client.send <- nextMsg:
 				default:

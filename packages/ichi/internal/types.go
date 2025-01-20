@@ -1,16 +1,40 @@
 package api
 
+import "log"
+
 type Message struct {
 	PlayerId string
 
 	Timestamp int
 
-	Payload Payload
+	Event Event
 }
 
-type Payload struct {
+type Event interface {
+	IsEvent()
+}
+
+type EmptyEvent struct {
 	Action GameAction
 }
+
+type CardEvent struct {
+	Action GameAction
+	PlayedCard Card
+}
+
+func (EmptyEvent) IsEvent() {}
+func (CardEvent) IsEvent() {}
+
+func HandleEvent(ev Event) {
+	switch evt := ev.(type) {
+	case CardEvent:
+		log.Println("PlayCardEvent", evt.PlayedCard)
+	default:
+		log.Println("Default")
+	}
+}
+
 
 type GameAction int
 
@@ -19,7 +43,8 @@ const (
 	Leave
 	Start
 	End
-	Play
+	PlayCard
+	DrawCard
 )
 
 type PlayerRole int
@@ -30,24 +55,36 @@ const (
 	Audience
 )
 
-type Player struct {
+type User struct {
 	id string
 
 	name string
 
 	role PlayerRole
 
-	hand int
+	hand []Card
+}
+
+type Player struct {
+	Id string
+
+	Name string
+
+	Hand int
 }
 
 type Game struct {
-	players map[string]Player
+	players map[string]User
 
 	playerOrder []string
 
-	activePlayer Player
+	activePlayer User
 
 	state GameState
+
+	deck []Card
+
+	discard []Card
 }
 
 type GameState int
@@ -59,13 +96,17 @@ const (
 )
 
 type ClientState struct {
-	PlayerHands map[string]int
+	Players []Player
 
-	PlayerOrder []string
+	Order []string
 
 	Host string
 
-	ActivePlayerId string 
+	ActivePlayerId string
 
 	State GameState
+
+	LastPlayedCard Card
+
+	Hand []Card
 }
