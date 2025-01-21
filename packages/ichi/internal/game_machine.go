@@ -9,9 +9,13 @@ const (
 )
 
 func NewGame() *Game {
+	deck, discard := Draw(NewDeck(), 1)
 	return &Game{
-		players: make(map[string]User),
-		state:   Waiting,
+		players:     make(map[string]User),
+		state:       Waiting,
+		playerOrder: make([]string, 0),
+		deck:        deck,
+		discard:     discard,
 	}
 }
 
@@ -35,13 +39,12 @@ func NewClientStatus(game *Game, playerId string) ClientState {
 		}
 	}
 
-	// last played card
-	// get the last card from the discard pile
-	lastPlayedCard := game.discard[len(game.discard)-1]
-
-	// get the specified player's hand
-	currentPlayer := game.players[playerId]
-	currentPlayerHand := currentPlayer.hand
+	var lastPlayedCard Card
+	var currentPlayerHand []Card
+	if game.state == Playing {
+		lastPlayedCard = game.discard[len(game.discard)-1]
+		currentPlayerHand = game.players[playerId].hand
+	}
 
 	return ClientState{
 		Players:        players,
@@ -54,35 +57,33 @@ func NewClientStatus(game *Game, playerId string) ClientState {
 	}
 }
 
-func NextAction(game *Game, message Message) {
-	msgPlayer, ok := game.players[message.PlayerId]
+func HandlePlayerAction(game *Game, message Message) {
+	player, ok := game.players[message.PlayerId]
 
-	action := message.Event.Action
-	switch action {
-	case Join:
+	switch {
+	case message.Event.Join != nil:
 		// if msgPlayer is already in the game, do nothing
 		// if msgPlayer is not in the game, create a new player & add to the game
 		if !ok {
 			// create a new player
-			msgPlayer = User{id: message.PlayerId, name: "Player"}
+			player = User{id: message.PlayerId, name: "Player"}
 
 			// determine player role
 			if game.state != Waiting {
-				msgPlayer.role = Audience
+				player.role = Audience
+			} else if len(game.players) == 0 {
+				player.role = Host
 			} else {
-				if len(game.players) == 0 {
-					msgPlayer.role = Host
-				} else {
-					msgPlayer.role = Participant
-				}
+				player.role = Participant
 			}
 
 			// add player to the game
-			game.players[message.PlayerId] = msgPlayer
+			game.players[message.PlayerId] = player
 		}
 
-		fmt.Println("Join", message.PlayerId, msgPlayer.role, len(game.players))
-	case Leave:
+		fmt.Printf("Action:\t\t%s\nPlayer Id:\t%s\nPlayer Role:\t%s\nPlayer Count:\t%d\n", message.Event.Join.Action(), message.PlayerId, player.role, len(game.players))
+
+	case message.Event.Leave != nil:
 		// if msgPlayer is not in the game, do nothing
 		// if msgPlayer is the host, assign new host and remove
 		// if msgPlayer is the participant, remove from the game
@@ -90,37 +91,38 @@ func NextAction(game *Game, message Message) {
 			RemovePlayer(game, message.PlayerId)
 		}
 
-		fmt.Println("Leave", message.PlayerId, len(game.players))
-	case Start:
+		fmt.Printf("Action:\t\t%s\nPlayer Id:\t%s\nPlayer Role:\t%s\nPlayer Count:\t%d\n", message.Event.Leave.Action(), message.PlayerId, player.role, len(game.players))
+
+	case message.Event.Start != nil:
 		// if msgPlayer is not the host, do nothing
 		// if msgPlayer is the host, change game state to Playing
-		if msgPlayer.role == Host &&
+		if player.role == Host &&
 			game.state == Waiting &&
 			len(game.players) >= MinPlayerCount {
 			StartGame(game)
 		}
-		fmt.Println("Start", message.PlayerId)
-	case End:
+		fmt.Printf("Action:\t\t%s\nPlayer Id:\t%s\nPlayer Count:\t%d\n", message.Event.Start.Action(), message.PlayerId, len(game.players))
+
+	case message.Event.End != nil:
 		// if msgPlayer is not the host, do nothing
 		// if msgPlayer is the host, change game state to Ended
-		if msgPlayer.role == Host &&
+		if player.role == Host &&
 			game.state == Playing {
-
 			game.state = Ended
 		}
-		fmt.Println("End", message.PlayerId)
+		fmt.Printf("Action:\t\t%s\nPlayer Id:\t%s\n", message.Event.End.Action(), message.PlayerId)
 
-	case PlayCard:
+	case message.Event.PlayCard != nil:
 		// if msgPlayer is not the active player, do nothing
 		// if msgPlayer is the active player, decrement the hand count and change active player
-		if msgPlayer.id == game.activePlayer.id {
+		if player.id == game.activePlayer.id {
 
 			// decrement hand count
 			//msgPlayer.hand--
 			//game.players[msgPlayer.id] = msgPlayer
 
 			// if hand count is 0, end the game
-			if len(msgPlayer.hand) == 0 {
+			if len(player.hand) == 0 {
 				game.state = Ended
 				break
 			}
@@ -136,20 +138,20 @@ func NextAction(game *Game, message Message) {
 
 			activePlayerIndex = (activePlayerIndex + 1) % len(game.playerOrder)
 			game.activePlayer = game.players[game.playerOrder[activePlayerIndex]]
+			fmt.Printf("Action:\t\t%s\nPlayer Id:\t%s\nCard Played:\t%s\n", message.Event.PlayCard.Action(), message.PlayerId, message.Event.PlayCard.Card)
+		} else {
+			fmt.Printf("Action:\t\t%s\nPlayer Id:\t%s\nCard Played:\tPlayed out of turn\n", message.Event.PlayCard.Action(), message.PlayerId)
 		}
-		fmt.Println("Play", message.PlayerId, msgPlayer.hand, game.activePlayer.id)
 
 	default:
-		panic(fmt.Errorf("unknown state: %d", action))
+		panic(fmt.Errorf("invalid event"))
 	}
 }
 
 func StartGame(game *Game) {
-
 	game.state = Playing
 
 	// set player order
-	game.playerOrder = make([]string, 0, len(game.players))
 	for playerId := range game.players {
 		game.playerOrder = append(game.playerOrder, playerId)
 	}
