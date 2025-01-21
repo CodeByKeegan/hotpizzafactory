@@ -131,13 +131,13 @@ func HandlePlayerAction(game *Game, message Message) {
 			activePlayerIndex := 0
 			for i, playerId := range game.playerOrder {
 				if playerId == game.activePlayer.id {
-					activePlayerIndex = i
+					activePlayerIndex = (i + 1) % len(game.playerOrder)
 					break
 				}
 			}
 
-			activePlayerIndex = (activePlayerIndex + 1) % len(game.playerOrder)
 			game.activePlayer = game.players[game.playerOrder[activePlayerIndex]]
+
 			fmt.Printf("Action:\t\t%s\nPlayer Id:\t%s\nCard Played:\t%s\n", message.Event.PlayCard.Action(), message.PlayerId, message.Event.PlayCard.Card)
 		} else {
 			fmt.Printf("Action:\t\t%s\nPlayer Id:\t%s\nCard Played:\tPlayed out of turn\n", message.Event.PlayCard.Action(), message.PlayerId)
