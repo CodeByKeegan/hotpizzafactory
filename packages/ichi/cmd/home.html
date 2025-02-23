@@ -35,12 +35,32 @@
 
           const playerId = getPlayerId();
 
+          const event = {};
+          switch (action) {
+            case 1:
+              event.leave = {};
+              break;
+            case 2:
+              event.start = {};
+              break;
+            case 3:
+              event.end = {};
+              break;
+            case 4:
+              event.playcard = {};
+              event.card = {
+                face: 0,
+                color: 0,
+              };
+              break;
+            default:
+              return false;
+          }
+
           conn.send(JSON.stringify({
             playerId,
             timestamp: new Date().getTime(),
-            payload: {
-              action,
-            }
+            event,
           }));
 
           return false;
@@ -120,9 +140,10 @@
   <body>
     <div id="log"></div>
     <form id="form">
-      <button type="submit" id="action" value="2">Start</button>
-      <button type="submit" id="action" value="4">Play</button>
-      <button type="submit" id="action" value="3">End</button>
+      <button type="submit" id="action" value="1">Leave Game</button>
+      <button type="submit" id="action" value="2">Start Game</button>
+      <button type="submit" id="action" value="4">Play Card</button>
+      <button type="submit" id="action" value="3">End Game</button>
     </form>
   </body>
 </html>

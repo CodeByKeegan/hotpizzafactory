@@ -1,40 +1,46 @@
 package api
 
-import "log"
-
 type Message struct {
 	PlayerId string
 
 	Timestamp int
 
-	Event Event
+	Event EventUnion
+}
+
+type EventUnion struct {
+	Join *JoinEvent
+	Leave *LeaveEvent
+	Start *StartEvent
+	End *EndEvent
+	PlayCard *PlayCardEvent
+	DrawCard *DrawCardEvent
 }
 
 type Event interface {
-	IsEvent()
+	Action() GameAction
 }
 
-type EmptyEvent struct {
-	Action GameAction
+type JoinEvent struct {}
+func (JoinEvent) Action() GameAction { return Join }
+
+type LeaveEvent struct {}
+func (LeaveEvent) Action() GameAction { return Leave }
+
+type StartEvent struct {}
+func (StartEvent) Action() GameAction { return Start }
+
+type EndEvent struct {}
+func (EndEvent) Action() GameAction { return End }
+
+type PlayCardEvent struct {
+	Card Card
+	TargetPlayer *string
 }
+func (PlayCardEvent) Action() GameAction { return PlayCard }
 
-type CardEvent struct {
-	Action GameAction
-	PlayedCard Card
-}
-
-func (EmptyEvent) IsEvent() {}
-func (CardEvent) IsEvent() {}
-
-func HandleEvent(ev Event) {
-	switch evt := ev.(type) {
-	case CardEvent:
-		log.Println("PlayCardEvent", evt.PlayedCard)
-	default:
-		log.Println("Default")
-	}
-}
-
+type DrawCardEvent struct {}
+func (DrawCardEvent) Action() GameAction { return DrawCard }
 
 type GameAction int
 
@@ -47,6 +53,19 @@ const (
 	DrawCard
 )
 
+var gameActionName = map[GameAction]string{
+	Join:     "Join",
+	Leave:    "Leave",
+	Start:    "Start",
+	End:      "End",
+	PlayCard: "PlayCard",
+	DrawCard: "DrawCard",
+}
+
+func (ga GameAction) String() string {
+	return gameActionName[ga]
+}
+
 type PlayerRole int
 
 const (
@@ -54,6 +73,16 @@ const (
 	Participant
 	Audience
 )
+
+var playerRoleName = map[PlayerRole]string{
+	Host:        "Host",
+	Participant: "Participant",
+	Audience:    "Audience",
+}
+
+func (pr PlayerRole) String() string {
+	return playerRoleName[pr]
+}
 
 type User struct {
 	id string
@@ -94,6 +123,16 @@ const (
 	Playing
 	Ended
 )
+
+var gameStateName = map[GameState]string{
+	Waiting: "Waiting",
+	Playing: "Playing",
+	Ended:   "Ended",
+}
+
+func (gs GameState) String() string {
+	return gameStateName[gs]
+}
 
 type ClientState struct {
 	Players []Player
